@@ -86,4 +86,5 @@ async def on_ready() -> None:
     print(f"Bot connected as {client.user}")
 
 
-client.run(TOKEN)
+if __name__ == "__main__":
+    client.run(TOKEN)
