@@ -33,6 +33,14 @@ import os
 import re
 from pathlib import Path
 from typing import Any
+from dataclasses import dataclass
+
+
+@dataclass
+class MainCharacter:
+    character_name: str
+    rank_name: str | None
+    discord_user_id: int | None
 
 
 DISCORD_USER_ID_PATTERN = re.compile(r"\b\d{17,20}\b")
@@ -62,7 +70,7 @@ def extract_table_block(text: str, table_name: str) -> str:
         elif char == "}":
             depth -= 1
             if depth == 0:
-                return text[start_index:i + 1]
+                return text[start_index : i + 1]
 
     raise ValueError(f"Could not find closing brace for table {table_name!r}")
 
@@ -86,7 +94,7 @@ def extract_guild_block(table_block: str, guild_name: str) -> str:
         elif char == "}":
             depth -= 1
             if depth == 0:
-                return table_block[guild_index:i + 1]
+                return table_block[guild_index : i + 1]
 
     raise ValueError(f"Could not find closing brace for guild {guild_name!r}")
 
@@ -220,7 +228,7 @@ def parse_active_member_map(text: str, guild_name: str) -> dict[str, dict[str, A
     return member_map
 
 
-def build_main_character_rank_list(text: str, guild_name: str) -> list[dict[str, Any]]:
+def build_main_character_rank_list(text: str, guild_name: str) -> list[MainCharacter]:
     """
     Return one record per main character with rank and Discord user ID.
 
@@ -247,11 +255,11 @@ def build_main_character_rank_list(text: str, guild_name: str) -> list[dict[str,
             continue
 
         results.append(
-            {
-                "character_name": main_name,
-                "rank_name": member["rank_name"],
-                "discord_user_id": parse_discord_user_id(member["officer_note"]),
-            }
+            MainCharacter(
+                character_name=main_name,
+                rank_name=member["rank_name"],
+                discord_user_id=parse_discord_user_id(member["officer_note"]),
+            )
         )
 
     if missing_from_member_history:
