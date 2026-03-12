@@ -36,14 +36,14 @@ from typing import Any
 from dataclasses import dataclass
 
 
+DISCORD_USER_ID_PATTERN = re.compile(r"\b\d{17,20}\b")
+
+
 @dataclass
 class MainCharacter:
     character_name: str
     rank_name: str | None
     discord_user_id: int | None
-
-
-DISCORD_USER_ID_PATTERN = re.compile(r"\b\d{17,20}\b")
 
 
 def load_grm_file_text(path: str | os.PathLike[str]) -> str:
