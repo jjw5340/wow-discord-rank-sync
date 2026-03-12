@@ -23,6 +23,8 @@ Output format:
     },
     ...
 ]
+
+Tested against GRM VERSION 1.99382 - February 28th, 2026
 """
 
 from __future__ import annotations
@@ -196,10 +198,23 @@ def parse_active_member_map(text: str, guild_name: str) -> dict[str, dict[str, A
     member_map: dict[str, dict[str, Any]] = {}
     for entry in member_entries:
         character_name = parse_entry_key(entry)
+        rank_name = parse_string_field(entry, "rankName")
+        officer_note = parse_string_field(entry, "officerNote")
+
+        if rank_name is None:
+            raise RuntimeError(
+                f"GRM parser error: expected 'rankName' field for {character_name}"
+            )
+
+        if "officerNote" not in entry:
+            raise RuntimeError(
+                f"GRM parser error: expected 'officerNote' field for {character_name}"
+            )
+
         member_map[character_name] = {
             "character_name": character_name,
-            "rank_name": parse_string_field(entry, "rankName"),
-            "officer_note": parse_string_field(entry, "officerNote"),
+            "rank_name": rank_name,
+            "officer_note": officer_note,
         }
 
     return member_map
