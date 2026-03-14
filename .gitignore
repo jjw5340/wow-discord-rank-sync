@@ -1,17 +1,20 @@
-# Python cache
+# Python Cache
 __pycache__/
 *.pyc
 
-# Virtual environments
+# Virtual Environments
 .venv/
 venv/
 
-# Environment variables / secrets
+# Environment Variables / Secrets
 .env
 
-# VS Code settings
+# VS Code Settings
 .vscode/
 
-# OS junk
+# OS Junk
 .DS_Store
 Thumbs.db
+
+# Temporary Files
+scratch/
