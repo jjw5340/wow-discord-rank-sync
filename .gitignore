@@ -10,7 +10,8 @@ venv/
 .env
 
 # VS Code Settings
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # OS Junk
 .DS_Store
