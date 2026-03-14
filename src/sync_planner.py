@@ -27,7 +27,7 @@ ROLE_POLICY: RolePolicy = "exclusive"
 
 @dataclass(frozen=True)
 class SyncAction:
-    member_display_name: str
+    member_nickname: str
     discord_user_id: int
     action: ActionType
     role_name: str
@@ -43,33 +43,33 @@ def desired_role_names_for_rank(rank_name: str) -> list[str]:
     Return the desired managed Discord role names for a GRM rank.
 
     Exclusive policy:
-        Raider -> {"Raiders"}
+        Raider -> ["Raiders"]
 
     Nested policy:
-        Raider -> {"Raiders", "Trials", "Socials"}
+        Raider -> ["Raiders", "Trials", "Socials"]
     """
     primary_role_name = RANK_NAME_TO_ROLE_NAME.get(rank_name)
     if primary_role_name is None:
         raise ValueError(f"Unknown GRM rank: {rank_name!r}")
 
     if ROLE_POLICY == "exclusive":
-        return {primary_role_name}
+        return [primary_role_name]
 
     if ROLE_POLICY == "nested":
-        ordered_roles = ["Socials", "Trials", "Raiders", "Veterans"]
+        ordered_roles = list(RANK_NAME_TO_ROLE_NAME.values())
         if primary_role_name not in ordered_roles:
             raise ValueError(
-                f"Primary role {primary_role_name!r} is not in nested role ordering"
+                f"Primary role {primary_role_name!r} is not in managed role ordering"
             )
 
-        max_index = ordered_roles.index(primary_role_name)
+        start_index = ordered_roles.index(primary_role_name)
 
-        return set(ordered_roles[: max_index + 1])
+        return ordered_roles[start_index:]
 
     raise ValueError(f"Unknown ROLE_POLICY: {ROLE_POLICY!r}")
 
 
-def build_desired_role_names_by_discord_user_id() -> dict[int, set[str]]:
+def build_desired_role_names_by_discord_user_id() -> dict[int, list[str]]:
     """
     Build the desired managed Discord role names keyed by Discord user ID.
 
@@ -78,7 +78,7 @@ def build_desired_role_names_by_discord_user_id() -> dict[int, set[str]]:
     """
     mains: list[MainCharacter] = load_main_characters()
 
-    desired: dict[int, set[str]] = {}
+    desired: dict[int, list[str]] = {}
 
     for member in mains:
         if member.discord_user_id is None:
@@ -105,7 +105,7 @@ def get_current_managed_role_names(member: discord.Member) -> set[str]:
 
 def plan_member_sync_actions(
     member: discord.Member,
-    desired_role_names: set[str] | None,
+    desired_role_names: list[str] | None,
 ) -> list[SyncAction]:
     """
     Plan add/remove actions for a single Discord member.
@@ -113,29 +113,31 @@ def plan_member_sync_actions(
     If desired_role_names is None, the member should have no managed roles.
     """
     current_role_names = get_current_managed_role_names(member)
-    desired_role_names = desired_role_names or set()
+    desired_role_names = desired_role_names or []
+    desired_role_names_set = set(desired_role_names)
 
     actions: list[SyncAction] = []
 
-    for role_name in sorted(current_role_names - desired_role_names):
+    for role_name in sorted(current_role_names - desired_role_names_set):
         actions.append(
             SyncAction(
-                member_display_name=member.display_name,
+                member_nickname=member.display_name,
                 discord_user_id=member.id,
                 action="remove",
                 role_name=role_name,
             )
         )
 
-    for role_name in sorted(desired_role_names - current_role_names):
-        actions.append(
-            SyncAction(
-                member_display_name=member.display_name,
-                discord_user_id=member.id,
-                action="add",
-                role_name=role_name,
+    for role_name in desired_role_names:
+        if role_name not in current_role_names:
+            actions.append(
+                SyncAction(
+                    member_nickname=member.display_name,
+                    discord_user_id=member.id,
+                    action="add",
+                    role_name=role_name,
+                )
             )
-        )
 
     return actions
 
