@@ -46,6 +46,24 @@ class MainCharacter:
     discord_user_id: int | None
 
 
+def load_grm_env_config() -> tuple[str, str]:
+    """Load required GRM-related environment variables from .env."""
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    grm_path = os.getenv("GRM_SAVEDVARIABLES_PATH")
+    grm_guild_name = os.getenv("GRM_GUILD_NAME")
+
+    if not grm_path:
+        raise RuntimeError("GRM_SAVEDVARIABLES_PATH is not set")
+
+    if not grm_guild_name:
+        raise RuntimeError("GRM_GUILD_NAME is not set")
+
+    return grm_path, grm_guild_name
+
+
 def load_grm_file_text(path: str | os.PathLike[str]) -> str:
     """Read a full GRM SavedVariables Lua file."""
     return Path(path).read_text(encoding="utf-8")
@@ -275,15 +293,8 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    grm_path = os.getenv("GRM_SAVEDVARIABLES_PATH")
-    grm_guild_name = os.getenv("GRM_GUILD_NAME")
-
-    if not grm_path:
-        raise RuntimeError("GRM_SAVEDVARIABLES_PATH is not set")
-
-    if not grm_guild_name:
-        raise RuntimeError("GRM_GUILD_NAME is not set")
-
+    grm_path, grm_guild_name = load_grm_env_config()
+    
     text = load_grm_file_text(grm_path)
     mains = build_main_character_rank_list(text, grm_guild_name)
 
