@@ -288,15 +288,17 @@ def build_main_character_rank_list(text: str, guild_name: str) -> list[MainChara
     return results
 
 
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
+def load_main_characters() -> list[MainCharacter]:
+    """
+    Load the GRM SavedVariables file and return parser main character records.
+    """
     grm_path, grm_guild_name = load_grm_env_config()
-    
     text = load_grm_file_text(grm_path)
-    mains = build_main_character_rank_list(text, grm_guild_name)
+    return build_main_character_rank_list(text, grm_guild_name)
+
+
+if __name__ == "__main__":
+    mains = load_main_characters()
 
     print(f"Main count: {len(mains)}")
     print()
