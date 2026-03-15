@@ -1,7 +1,18 @@
+"""
+Create the Discord client and provide helper functions for guild-rank syncing.
+"""
+
+from __future__ import annotations
+
 import os
 
 import discord
 from dotenv import load_dotenv
+
+from src.rank_roles import (
+    get_managed_role_ids,
+    get_rank_role_by_guild_rank,
+)
 
 load_dotenv()
 
@@ -9,25 +20,14 @@ DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 if not DISCORD_BOT_TOKEN:
     raise RuntimeError("DISCORD_BOT_TOKEN is not set")
 
-DISCORD_GUILD_ID = int(os.getenv("DISCORD_GUILD_ID", "0"))
-if not DISCORD_GUILD_ID:
+discord_guild_id_raw = os.getenv("DISCORD_GUILD_ID")
+if not discord_guild_id_raw:
     raise RuntimeError("DISCORD_GUILD_ID is not set")
 
-RANK_NAME_TO_ROLE_NAME = {
-    # "GUILD RANK NAME": "DISCORD ROLE NAME"
-    "Veteran": "Veterans",
-    "Raider": "Raiders",
-    "Trial": "Trials",
-    "Social": "Socials",
-}
-
-ROLE_NAME_TO_ROLE_ID = {
-    # "DISCORD ROLE NAME": "DISCORD ROLE ID"
-    "Veterans": 1397686990882738227,
-    "Raiders": 1309183435851436142,
-    "Trials": 1309183538842697809,
-    "Socials": 1314598101184417895,
-}
+try:
+    DISCORD_GUILD_ID = int(discord_guild_id_raw)
+except ValueError:
+    raise RuntimeError("DISCORD_GUILD_ID must be an integer")
 
 intents = discord.Intents.default()
 intents.members = True
@@ -36,42 +36,27 @@ client = discord.Client(intents=intents)
 
 
 async def set_guild_rank(user_id: int, rank_name: str) -> None:
-    # Get the Discord server (guild) from the pre-defined Server ID.
     guild = client.get_guild(DISCORD_GUILD_ID)
     if guild is None:
         raise RuntimeError(f"Guild {DISCORD_GUILD_ID} not found")
 
-    # Get the Discord user from the input argument.
     member = guild.get_member(user_id)
     if member is None:
         member = await guild.fetch_member(user_id)
 
-    # Get the Discord role name from the input argument and the pre-defined list RANK_NAME_TO_ROLE_NAME.
-    # This is only used temporarily before later being converted to a Discord role ID.
-    role_name = RANK_NAME_TO_ROLE_NAME.get(rank_name)
-    if role_name is None:
-        valid_ranks = ", ".join(RANK_NAME_TO_ROLE_NAME.keys())
-        raise ValueError(f"Unknown rank '{rank_name}'. Valid ranks: {valid_ranks}")
+    rank_role = get_rank_role_by_guild_rank(rank_name)
+    if rank_role is None:
+        raise ValueError(f"Unknown rank {rank_name!r}")
 
-    # Convert the Discord role name to a Discord role ID.
-    target_role_id = ROLE_NAME_TO_ROLE_ID.get(role_name)
-    if target_role_id is None:
-        raise RuntimeError(f"Role name '{role_name}' has no configured role ID")
-
-    # Convert the Discord role ID to an object.
-    target_role = guild.get_role(target_role_id)
+    target_role = guild.get_role(rank_role.discord_role_id)
     if target_role is None:
         raise RuntimeError(
-            f"Role ID {target_role_id} for rank '{rank_name}' was not found"
+            f"Role ID {rank_role.discord_role_id} for rank {rank_name!r} was not found"
         )
 
-    # Create a list of roles to be removed from the Discord user and store it in roles_to_remove.
-    # Managed roles are pre-defined in ROLE_NAME_TO_ROLE_ID.
-    # The list is built from all managed roles the Discord user currently has, excluding the target role to be added.
-    managed_role_ids = set(ROLE_NAME_TO_ROLE_ID.values())
+    managed_role_ids = get_managed_role_ids()
     roles_to_remove = [
-        role
-        for role in member.roles
+        role for role in member.roles
         if role.id in managed_role_ids and role.id != target_role.id
     ]
 
