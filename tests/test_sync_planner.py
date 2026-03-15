@@ -41,7 +41,7 @@ async def on_ready() -> None:
 
     lines: list[str] = []
     lines.append(f"Guild: {guild.name} ({guild.id})")
-    lines.append(f"Member count fetched: {len(members)}")
+    lines.append(f"Fetched member count: {len(members)}")
     lines.append(f"Planned action count: {len(actions)}")
     lines.append("")
 
