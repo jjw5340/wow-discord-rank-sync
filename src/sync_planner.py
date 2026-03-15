@@ -19,7 +19,9 @@ import discord
 from src.grm_parser import MainCharacter, load_main_characters
 from src.rank_roles import (
     RANK_ROLES,
+    RankRole,
     get_managed_role_names,
+    get_rank_role_by_discord_role_name,
     get_rank_role_by_guild_rank,
 )
 
@@ -33,17 +35,21 @@ class SyncAction:
     discord_user_id: int
     action: ActionType
     role_name: str
+    discord_role_id: int
 
 
-def desired_role_names_for_rank(rank_name: str, role_policy: RolePolicy) -> list[str]:
+def desired_rank_roles_for_rank(
+    rank_name: str,
+    role_policy: RolePolicy,
+) -> list[RankRole]:
     """
-    Return the desired Discord role names for a GRM rank.
+    Return the desired managed RankRole objects for a GRM rank.
 
     Exclusive policy:
-        Raider -> ["Raiders"]
+        Raider -> [Raiders]
 
     Nested policy:
-        Raider -> ["Raiders", "Trials", "Socials"]
+        Raider -> [Raiders, Trials, Socials]
 
     The order of RANK_ROLES is significant and is expected to be highest to lowest.
     """
@@ -52,12 +58,12 @@ def desired_role_names_for_rank(rank_name: str, role_policy: RolePolicy) -> list
         raise ValueError(f"Unknown GRM rank: {rank_name!r}")
 
     if role_policy == "exclusive":
-        return [rank_role.discord_role_name] if rank_role.managed_role else []
+        return [rank_role] if rank_role.managed_role else []
 
     if role_policy == "nested":
         start_index = RANK_ROLES.index(rank_role)
         return [
-            item.discord_role_name
+            item
             for item in RANK_ROLES[start_index:]
             if item.managed_role
         ]
@@ -65,17 +71,17 @@ def desired_role_names_for_rank(rank_name: str, role_policy: RolePolicy) -> list
     raise ValueError(f"Unknown role_policy: {role_policy!r}")
 
 
-def build_desired_role_names_by_discord_user_id(
+def build_desired_rank_roles_by_discord_user_id(
     role_policy: RolePolicy,
-) -> dict[int, list[str]]:
+) -> dict[int, list[RankRole]]:
     """
-    Build the desired Discord role names keyed by Discord user ID.
+    Build the desired managed RankRole objects keyed by Discord user ID.
 
     Members with no Discord user ID are skipped.
     Members whose GRM rank does not map to a configured role are skipped.
     """
     mains: list[MainCharacter] = load_main_characters()
-    desired: dict[int, list[str]] = {}
+    desired: dict[int, list[RankRole]] = {}
 
     for member in mains:
         if member.discord_user_id is None:
@@ -85,11 +91,14 @@ def build_desired_role_names_by_discord_user_id(
             continue
 
         try:
-            desired_role_names = desired_role_names_for_rank(member.rank_name, role_policy)
+            desired_rank_roles = desired_rank_roles_for_rank(
+                member.rank_name,
+                role_policy,
+            )
         except ValueError:
             continue
 
-        desired[member.discord_user_id] = desired_role_names
+        desired[member.discord_user_id] = desired_rank_roles
 
     return desired
 
@@ -102,39 +111,45 @@ def get_current_managed_role_names(member: discord.Member) -> set[str]:
 
 def plan_member_sync_actions(
     member: discord.Member,
-    desired_role_names: list[str] | None,
+    desired_rank_roles: list[RankRole] | None,
 ) -> list[SyncAction]:
     """
     Plan add/remove actions for one Discord member.
 
-    If desired_role_names is None, the member should have no managed roles.
+    If desired_rank_roles is None, the member should have no managed roles.
     """
     current_role_names = get_current_managed_role_names(member)
-    desired_role_names = desired_role_names or []
-    desired_role_names_set = set(desired_role_names)
+    desired_rank_roles = desired_rank_roles or []
+    desired_role_names = {rank_role.discord_role_name for rank_role in desired_rank_roles}
 
     actions: list[SyncAction] = []
 
     # Plan removals for managed roles the member should no longer have
-    for role_name in sorted(current_role_names - desired_role_names_set):
+    for role_name in sorted(current_role_names - desired_role_names):
+        rank_role = get_rank_role_by_discord_role_name(role_name)
+        if rank_role is None:
+            continue
+
         actions.append(
             SyncAction(
                 member_nickname=member.display_name,
                 discord_user_id=member.id,
                 action="remove",
-                role_name=role_name,
+                role_name=rank_role.discord_role_name,
+                discord_role_id=rank_role.discord_role_id,
             )
         )
 
     # Plan additions in the configured hierarchy order
-    for role_name in desired_role_names:
-        if role_name not in current_role_names:
+    for rank_role in desired_rank_roles:
+        if rank_role.discord_role_name not in current_role_names:
             actions.append(
                 SyncAction(
                     member_nickname=member.display_name,
                     discord_user_id=member.id,
                     action="add",
-                    role_name=role_name,
+                    role_name=rank_role.discord_role_name,
+                    discord_role_id=rank_role.discord_role_id,
                 )
             )
 
@@ -151,12 +166,12 @@ def plan_guild_sync_actions(
     Members present in GRM desired state are aligned to their desired roles.
     Members absent from GRM desired state have all managed roles removed.
     """
-    desired_by_user_id = build_desired_role_names_by_discord_user_id(role_policy)
+    desired_by_user_id = build_desired_rank_roles_by_discord_user_id(role_policy)
 
     actions: list[SyncAction] = []
 
     for member in members:
-        desired_role_names = desired_by_user_id.get(member.id)
-        actions.extend(plan_member_sync_actions(member, desired_role_names))
+        desired_rank_roles = desired_by_user_id.get(member.id)
+        actions.extend(plan_member_sync_actions(member, desired_rank_roles))
 
     return actions
