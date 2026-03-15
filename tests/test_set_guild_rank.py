@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from src.bot import TOKEN, client, set_guild_rank
+from src.bot import DISCORD_BOT_TOKEN, client, set_guild_rank
 
 load_dotenv()
 
@@ -22,4 +22,4 @@ async def on_ready():
 
 
 if __name__ == "__main__":
-    client.run(TOKEN)
+    client.run(DISCORD_BOT_TOKEN)

@@ -5,9 +5,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+if not DISCORD_BOT_TOKEN:
+    raise RuntimeError("DISCORD_BOT_TOKEN is not set")
 
-GUILD_ID = 1156597024641273939
+DISCORD_GUILD_ID = int(os.getenv("DISCORD_GUILD_ID", "0"))
+if not DISCORD_GUILD_ID:
+    raise RuntimeError("DISCORD_GUILD_ID is not set")
 
 RANK_NAME_TO_ROLE_NAME = {
     # "GUILD RANK NAME": "DISCORD ROLE NAME"
@@ -33,9 +37,9 @@ client = discord.Client(intents=intents)
 
 async def set_guild_rank(user_id: int, rank_name: str) -> None:
     # Get the Discord server (guild) from the pre-defined Server ID.
-    guild = client.get_guild(GUILD_ID)
+    guild = client.get_guild(DISCORD_GUILD_ID)
     if guild is None:
-        raise RuntimeError(f"Guild {GUILD_ID} not found")
+        raise RuntimeError(f"Guild {DISCORD_GUILD_ID} not found")
 
     # Get the Discord user from the input argument.
     member = guild.get_member(user_id)
@@ -87,4 +91,4 @@ async def on_ready() -> None:
 
 
 if __name__ == "__main__":
-    client.run(TOKEN)
+    client.run(DISCORD_BOT_TOKEN)

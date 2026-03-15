@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from src.bot import GUILD_ID, TOKEN, client
+from src.bot import DISCORD_GUILD_ID, DISCORD_BOT_TOKEN, client
 from src.sync_planner import RolePolicy, SyncAction, plan_guild_sync_actions
 
 load_dotenv()
@@ -30,9 +30,9 @@ def format_action(action: SyncAction) -> str:
 async def on_ready() -> None:
     print(f"Bot connected as {client.user}")
 
-    guild = client.get_guild(GUILD_ID)
+    guild = client.get_guild(DISCORD_GUILD_ID)
     if guild is None:
-        raise RuntimeError(f"Guild {GUILD_ID} not found")
+        raise RuntimeError(f"Guild {DISCORD_GUILD_ID} not found")
 
     members = [member async for member in guild.fetch_members(limit=None)]
     actions = plan_guild_sync_actions(members, ROLE_POLICY)
@@ -56,4 +56,4 @@ async def on_ready() -> None:
 
 
 if __name__ == "__main__":
-    client.run(TOKEN)
+    client.run(DISCORD_BOT_TOKEN)
