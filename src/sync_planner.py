@@ -30,11 +30,11 @@ ActionType = Literal["add", "remove"]
 
 @dataclass(frozen=True)
 class SyncAction:
-    user_name: str
     user_id: int
-    action: ActionType
-    role_name: str
+    user_name: str
     role_id: int
+    role_name: str
+    action: ActionType
 
 
 def desired_rank_roles_for_rank(
@@ -132,11 +132,11 @@ def plan_member_sync_actions(
     ):
         actions.append(
             SyncAction(
-                user_name=member.display_name,
                 user_id=member.id,
-                action="remove",
-                role_name=rank_role.discord_role_name,
+                user_name=member.display_name,
                 role_id=rank_role.discord_role_id,
+                role_name=rank_role.discord_role_name,
+                action="remove",
             )
         )
 
@@ -145,11 +145,11 @@ def plan_member_sync_actions(
         if rank_role not in current_rank_role_set:
             actions.append(
                 SyncAction(
-                    user_name=member.display_name,
                     user_id=member.id,
-                    action="add",
-                    role_name=rank_role.discord_role_name,
+                    user_name=member.display_name,
                     role_id=rank_role.discord_role_id,
+                    role_name=rank_role.discord_role_name,
+                    action="add",
                 )
             )
 
