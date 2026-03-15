@@ -15,10 +15,14 @@ OUTPUT_PATH = Path("scratch/test_sync_planner_output.txt")
 
 def format_action(action: SyncAction) -> str:
     """Format one planned sync action for human-readable output."""
+    preposition = "to" if action.action == "add" else "from"
+
     return (
-        f"{action.member_nickname} -> "
-        f"{action.discord_user_id} -> "
-        f"{action.action} {action.role_name}"
+        f"{action.action:<6} "
+        f"{action.role_name:<8} "
+        f"{preposition:<4} "
+        f"{str(action.discord_user_id):<19} "
+        f"({action.member_nickname})"
     )
 
 
