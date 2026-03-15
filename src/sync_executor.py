@@ -12,13 +12,13 @@ import discord
 from src.sync_planner import SyncAction
 
 
-SyncActionResult = Literal["applied", "skipped"]
+SyncVerdict = Literal["applied", "skipped"]
 
 
 @dataclass(frozen=True)
-class SyncActionOutcome:
+class SyncResult:
     action: SyncAction
-    result: SyncActionResult
+    verdict: SyncVerdict
     detail: str | None = None
 
 
@@ -48,55 +48,55 @@ def get_role(
 async def apply_sync_action(
     guild: discord.Guild,
     action: SyncAction,
-) -> SyncActionOutcome:
+) -> SyncResult:
     """Apply one planned sync action to Discord."""
     member = await get_member(guild, action.user_id)
     if member is None:
-        return SyncActionOutcome(
+        return SyncResult(
             action=action,
-            result="skipped",
+            verdict="skipped",
             detail="member not found",
         )
 
     role = get_role(guild, action.role_id)
     if role is None:
-        return SyncActionOutcome(
+        return SyncResult(
             action=action,
-            result="skipped",
+            verdict="skipped",
             detail="role not found",
         )
 
     if action.action == "add":
         if role in member.roles:
-            return SyncActionOutcome(
+            return SyncResult(
                 action=action,
-                result="skipped",
+                verdict="skipped",
                 detail="member already has role",
             )
 
         await member.add_roles(role, reason="Guild rank sync")
-        return SyncActionOutcome(
+        return SyncResult(
             action=action,
-            result="applied",
+            verdict="applied",
         )
 
     if action.action == "remove":
         if role not in member.roles:
-            return SyncActionOutcome(
+            return SyncResult(
                 action=action,
-                result="skipped",
+                verdict="skipped",
                 detail="member does not have role",
             )
 
         await member.remove_roles(role, reason="Guild rank sync")
-        return SyncActionOutcome(
+        return SyncResult(
             action=action,
-            result="applied",
+            verdict="applied",
         )
 
-    return SyncActionOutcome(
+    return SyncResult(
         action=action,
-        result="skipped",
+        verdict="skipped",
         detail=f"unknown action type: {action.action!r}",
     )
 
@@ -104,9 +104,9 @@ async def apply_sync_action(
 async def apply_sync_actions(
     guild: discord.Guild,
     actions: list[SyncAction],
-) -> list[SyncActionOutcome]:
+) -> list[SyncResult]:
     """Apply a list of planned sync actions in order."""
-    results: list[SyncActionOutcome] = []
+    results: list[SyncResult] = []
 
     for action in actions:
         result = await apply_sync_action(guild, action)
