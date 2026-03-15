@@ -30,11 +30,11 @@ ActionType = Literal["add", "remove"]
 
 @dataclass(frozen=True)
 class SyncAction:
-    member_nickname: str
-    discord_user_id: int
+    user_name: str
+    user_id: int
     action: ActionType
     role_name: str
-    discord_role_id: int
+    role_id: int
 
 
 def desired_rank_roles_for_rank(
@@ -61,11 +61,7 @@ def desired_rank_roles_for_rank(
 
     if role_policy == "nested":
         start_index = RANK_ROLES.index(rank_role)
-        return [
-            item
-            for item in RANK_ROLES[start_index:]
-            if item.managed_role
-        ]
+        return [item for item in RANK_ROLES[start_index:] if item.managed_role]
 
     raise ValueError(f"Unknown role_policy: {role_policy!r}")
 
@@ -136,11 +132,11 @@ def plan_member_sync_actions(
     ):
         actions.append(
             SyncAction(
-                member_nickname=member.display_name,
-                discord_user_id=member.id,
+                user_name=member.display_name,
+                user_id=member.id,
                 action="remove",
                 role_name=rank_role.discord_role_name,
-                discord_role_id=rank_role.discord_role_id,
+                role_id=rank_role.discord_role_id,
             )
         )
 
@@ -149,11 +145,11 @@ def plan_member_sync_actions(
         if rank_role not in current_rank_role_set:
             actions.append(
                 SyncAction(
-                    member_nickname=member.display_name,
-                    discord_user_id=member.id,
+                    user_name=member.display_name,
+                    user_id=member.id,
                     action="add",
                     role_name=rank_role.discord_role_name,
-                    discord_role_id=rank_role.discord_role_id,
+                    role_id=rank_role.discord_role_id,
                 )
             )
 

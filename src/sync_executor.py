@@ -43,7 +43,7 @@ async def apply_sync_action(
     action: SyncAction,
 ) -> ExecutionResult:
     """Apply one planned sync action to Discord."""
-    member = await get_member_or_fetch(guild, action.discord_user_id)
+    member = await get_member_or_fetch(guild, action.user_id)
     if member is None:
         return ExecutionResult(
             action=action,

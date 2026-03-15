@@ -20,8 +20,8 @@ def format_action(action: SyncAction) -> str:
         f"{action.action:<6} "
         f"{action.role_name:<8} "
         f"{preposition:<4} "
-        f"{str(action.discord_user_id):<19} "
-        f"({action.member_nickname})"
+        f"{str(action.user_id):<19} "
+        f"({action.user_name})"
     )
 
 
