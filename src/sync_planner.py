@@ -20,9 +20,8 @@ from src.grm_parser import MainCharacter, load_main_characters
 from src.rank_roles import (
     RANK_ROLES,
     RankRole,
-    get_managed_role_names,
-    get_rank_role_by_discord_role_name,
     get_rank_role_by_guild_rank,
+    get_rank_role_by_discord_role_id,
 )
 
 RolePolicy = Literal["exclusive", "nested"]
@@ -103,10 +102,16 @@ def build_desired_rank_roles_by_discord_user_id(
     return desired
 
 
-def get_current_managed_role_names(member: discord.Member) -> set[str]:
-    """Return the managed Discord role names currently assigned to a member."""
-    managed_role_names = set(get_managed_role_names())
-    return {role.name for role in member.roles if role.name in managed_role_names}
+def get_current_managed_rank_roles(member: discord.Member) -> set[RankRole]:
+    """Return the managed RankRole objects currently assigned to a member."""
+    current_rank_role_set: set[RankRole] = set()
+
+    for role in member.roles:
+        rank_role = get_rank_role_by_discord_role_id(role.id)
+        if rank_role is not None and rank_role.managed_role:
+            current_rank_role_set.add(rank_role)
+
+    return current_rank_role_set
 
 
 def plan_member_sync_actions(
@@ -118,18 +123,17 @@ def plan_member_sync_actions(
 
     If desired_rank_roles is None, the member should have no managed roles.
     """
-    current_role_names = get_current_managed_role_names(member)
     desired_rank_roles = desired_rank_roles or []
-    desired_role_names = {rank_role.discord_role_name for rank_role in desired_rank_roles}
+    desired_rank_role_set = set(desired_rank_roles)
+    current_rank_role_set = get_current_managed_rank_roles(member)
 
     actions: list[SyncAction] = []
 
     # Plan removals for managed roles the member should no longer have
-    for role_name in sorted(current_role_names - desired_role_names):
-        rank_role = get_rank_role_by_discord_role_name(role_name)
-        if rank_role is None:
-            continue
-
+    for rank_role in sorted(
+        current_rank_role_set - desired_rank_role_set,
+        key=lambda item: RANK_ROLES.index(item),
+    ):
         actions.append(
             SyncAction(
                 member_nickname=member.display_name,
@@ -142,7 +146,7 @@ def plan_member_sync_actions(
 
     # Plan additions in the configured hierarchy order
     for rank_role in desired_rank_roles:
-        if rank_role.discord_role_name not in current_role_names:
+        if rank_role not in current_rank_role_set:
             actions.append(
                 SyncAction(
                     member_nickname=member.display_name,
