@@ -4,9 +4,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from src.bot import GUILD_ID, TOKEN, client
-from src.sync_planner import SyncAction, plan_guild_sync_actions
+from src.sync_planner import RolePolicy, SyncAction, plan_guild_sync_actions
 
 load_dotenv()
+
+ROLE_POLICY: RolePolicy = "exclusive"
 
 OUTPUT_PATH = Path("scratch/test_sync_planner_output.txt")
 
@@ -29,7 +31,7 @@ async def on_ready() -> None:
         raise RuntimeError(f"Guild {GUILD_ID} not found")
 
     members = [member async for member in guild.fetch_members(limit=None)]
-    actions = plan_guild_sync_actions(members)
+    actions = plan_guild_sync_actions(members, ROLE_POLICY)
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 

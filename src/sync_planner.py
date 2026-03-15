@@ -22,8 +22,6 @@ from src.grm_parser import MainCharacter, load_main_characters
 RolePolicy = Literal["exclusive", "nested"]
 ActionType = Literal["add", "remove"]
 
-ROLE_POLICY: RolePolicy = "exclusive"
-
 
 @dataclass(frozen=True)
 class SyncAction:
@@ -38,7 +36,7 @@ def get_managed_role_names() -> set[str]:
     return set(ROLE_NAME_TO_ROLE_ID.keys())
 
 
-def desired_role_names_for_rank(rank_name: str) -> list[str]:
+def desired_role_names_for_rank(rank_name: str, role_policy: RolePolicy) -> list[str]:
     """
     Return the desired managed Discord role names for a GRM rank.
 
@@ -52,10 +50,10 @@ def desired_role_names_for_rank(rank_name: str) -> list[str]:
     if primary_role_name is None:
         raise ValueError(f"Unknown GRM rank: {rank_name!r}")
 
-    if ROLE_POLICY == "exclusive":
+    if role_policy == "exclusive":
         return [primary_role_name]
 
-    if ROLE_POLICY == "nested":
+    if role_policy == "nested":
         ordered_roles = list(RANK_NAME_TO_ROLE_NAME.values())
         if primary_role_name not in ordered_roles:
             raise ValueError(
@@ -66,10 +64,12 @@ def desired_role_names_for_rank(rank_name: str) -> list[str]:
 
         return ordered_roles[start_index:]
 
-    raise ValueError(f"Unknown ROLE_POLICY: {ROLE_POLICY!r}")
+    raise ValueError(f"Unknown role_policy: {role_policy!r}")
 
 
-def build_desired_role_names_by_discord_user_id() -> dict[int, list[str]]:
+def build_desired_role_names_by_discord_user_id(
+    role_policy: RolePolicy,
+) -> dict[int, list[str]]:
     """
     Build the desired managed Discord role names keyed by Discord user ID.
 
@@ -88,7 +88,7 @@ def build_desired_role_names_by_discord_user_id() -> dict[int, list[str]]:
             continue
 
         try:
-            desired_role_names = desired_role_names_for_rank(member.rank_name)
+            desired_role_names = desired_role_names_for_rank(member.rank_name, role_policy)
         except ValueError:
             continue
 
@@ -142,14 +142,17 @@ def plan_member_sync_actions(
     return actions
 
 
-def plan_guild_sync_actions(members: list[discord.Member]) -> list[SyncAction]:
+def plan_guild_sync_actions(
+    members: list[discord.Member],
+    role_policy: RolePolicy,
+) -> list[SyncAction]:
     """
     Plan all managed-role sync actions for the provided Discord members.
 
     Members present in GRM desired state are aligned to their desired managed roles.
     Members absent from GRM desired state have all managed roles removed.
     """
-    desired_by_user_id = build_desired_role_names_by_discord_user_id()
+    desired_by_user_id = build_desired_role_names_by_discord_user_id(role_policy)
 
     actions: list[SyncAction] = []
 
