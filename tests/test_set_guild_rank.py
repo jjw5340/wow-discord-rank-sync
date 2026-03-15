@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from src.bot import DISCORD_BOT_TOKEN, client, set_guild_rank
+from src.bot import DISCORD_BOT_TOKEN, client, set_guild_rank_excl
 
 load_dotenv()
 
@@ -14,7 +14,7 @@ TEST_RANK = "Veteran"
 async def on_ready():
     print(f"Bot connected as {client.user}")
 
-    await set_guild_rank(TEST_USER_ID, TEST_RANK)
+    await set_guild_rank_excl(TEST_USER_ID, TEST_RANK)
 
     print("Test role assignment complete")
 
