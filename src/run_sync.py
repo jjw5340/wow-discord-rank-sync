@@ -79,16 +79,29 @@ def build_result_lines(results: list[SyncResult]) -> list[str]:
 
 
 async def send_log_message(channel: discord.abc.Messageable, lines: list[str]) -> None:
-    """Send log lines to a Discord channel in chunks."""
+    """Send log lines to a Discord channel in chunks without splitting lines."""
     if not lines:
         return
 
-    text = "\n".join(lines)
     max_chunk_size = 1800
+    current_chunk_lines: list[str] = []
+    current_chunk_length = 0
 
-    for start in range(0, len(text), max_chunk_size):
-        chunk = text[start:start + max_chunk_size]
-        await channel.send(f"```text\n{chunk}\n```")
+    for line in lines:
+        line_length = len(line) + 1  # include newline
+
+        if current_chunk_lines and current_chunk_length + line_length > max_chunk_size:
+            chunk_text = "\n".join(current_chunk_lines)
+            await channel.send(f"```text\n{chunk_text}\n```")
+            current_chunk_lines = []
+            current_chunk_length = 0
+
+        current_chunk_lines.append(line)
+        current_chunk_length += line_length
+
+    if current_chunk_lines:
+        chunk_text = "\n".join(current_chunk_lines)
+        await channel.send(f"```text\n{chunk_text}\n```")
 
 
 async def prompt_to_continue(action: SyncAction) -> bool:
