@@ -44,14 +44,16 @@ def build_preview_lines(
 ) -> list[str]:
     """Build the preview section for planned sync actions."""
     lines: list[str] = []
-    lines.append(f"Guild: {guild.name} ({guild.id})")
-    lines.append(f"Fetched member count: {len(members)}")
-    lines.append(f"Role policy: {ROLE_POLICY}")
+    lines.append(f"wow-discord-rank-sync")
     lines.append(f"Run mode: {RUN_MODE}")
+    lines.append(f"Role policy: {ROLE_POLICY}")
+    lines.append(f"")
+    lines.append(f"Discord Server: {guild.name} ({guild.id})")
+    lines.append(f"Fetched member count: {len(members)}")
     lines.append(f"Planned action count: {len(actions)}")
-    lines.append("")
-    lines.append("Planned Actions")
-    lines.append("---------------")
+    lines.append(f"")
+    lines.append(f"Planned Actions")
+    lines.append(f"---------------")
 
     if actions:
         for action in actions:
