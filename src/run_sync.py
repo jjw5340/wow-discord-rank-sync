@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 from src.bot import DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, client
 from src.sync_planner import RolePolicy, SyncAction, plan_guild_sync_actions
 from src.sync_executor import SyncResult, apply_sync_action
-from src.sync_output import format_action
+from src.sync_output import format_action, format_result
 
 load_dotenv()
 
@@ -35,14 +35,6 @@ log_channel_id_raw = os.getenv("DISCORD_LOG_CHANNEL_ID")
 DISCORD_LOG_CHANNEL_ID = int(log_channel_id_raw) if log_channel_id_raw else None
 
 OUTPUT_PATH = Path("scratch/run_sync_output.txt")
-
-
-def format_result(result: SyncResult) -> str:
-    """Format one execution result for human-readable output."""
-    action_text = format_action(result.action)
-    if result.detail:
-        return f"{result.verdict}: {action_text} [{result.detail}]"
-    return f"{result.verdict}: {action_text}"
 
 
 def build_preview_lines(
