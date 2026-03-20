@@ -11,6 +11,7 @@ This entry point:
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import os
 from pathlib import Path
@@ -35,6 +36,21 @@ log_channel_id_raw = os.getenv("DISCORD_LOG_CHANNEL_ID")
 DISCORD_LOG_CHANNEL_ID = int(log_channel_id_raw) if log_channel_id_raw else None
 
 OUTPUT_PATH = Path("scratch/run_sync_output.txt")
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for run_sync."""
+    parser = argparse.ArgumentParser(
+        description="Run guild-rank synchronization against Discord."
+    )
+    parser.add_argument(
+        "-m",
+        "--run-mode",
+        choices=["preview", "step_through", "continuous"],
+        default="preview",
+        help="Choose whether to preview only or apply actions.",
+    )
+    return parser.parse_args()
 
 
 def build_preview_lines(
@@ -199,4 +215,6 @@ async def on_ready() -> None:
 
 
 if __name__ == "__main__":
+    args = parse_args()
+    RUN_MODE = args.run_mode
     client.run(DISCORD_BOT_TOKEN)
