@@ -7,6 +7,22 @@ This entry point:
 - plans sync actions
 - logs a preview
 - optionally applies actions either step-by-step or continuously
+
+Usage:
+    py src/run_sync.py
+    py src/run_sync.py -m preview
+    py src/run_sync.py -m step_through
+    py src/run_sync.py -m continuous
+
+Run modes:
+    preview        Plan actions only; no role changes are applied (default).
+    step_through   Prompt for confirmation before each action.
+    continuous     Apply all actions without prompting.
+
+Notes:
+    - Preview mode is recommended before any execution.
+    - Output is written to scratch/run_sync_output.txt and optionally to a
+      configured Discord log channel.
 """
 
 from __future__ import annotations
