@@ -4,25 +4,13 @@ from dotenv import load_dotenv
 
 from src.bot import DISCORD_GUILD_ID, DISCORD_BOT_TOKEN, client
 from src.sync_planner import RolePolicy, SyncAction, plan_guild_sync_actions
+from src.sync_output import format_action
 
 load_dotenv()
 
 ROLE_POLICY: RolePolicy = "exclusive"
 
 OUTPUT_PATH = Path("scratch/test_sync_planner_output.txt")
-
-
-def format_action(action: SyncAction) -> str:
-    """Format one planned sync action for human-readable output."""
-    preposition = "to" if action.action == "add" else "from"
-
-    return (
-        f"{action.action:<6} "
-        f"{action.role_name:<8} "
-        f"{preposition:<4} "
-        f"{str(action.user_id):<19} "
-        f"({action.user_name})"
-    )
 
 
 @client.event
