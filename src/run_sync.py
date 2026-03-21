@@ -44,6 +44,7 @@ from src.sync_output import format_action, format_result
 load_dotenv()
 
 RunMode = Literal["preview", "step_through", "continuous"]
+PromptDecision = Literal["apply", "skip", "quit"]
 
 RUN_MODE: RunMode = "preview"
 ROLE_POLICY: RolePolicy = "exclusive"
@@ -138,16 +139,19 @@ async def send_log_message(channel: discord.abc.Messageable, lines: list[str]) -
         await channel.send(f"```text\n{chunk_text}\n```")
 
 
-async def prompt_to_continue(action: SyncAction) -> bool:
+async def prompt_to_continue(action: SyncAction) -> PromptDecision:
     """Prompt in the terminal before applying one action."""
     prompt = f"Apply action? {format_action(action)} [y/N/q]: "
     response = await asyncio.to_thread(input, prompt)
     normalized = response.strip().lower()
 
     if normalized == "q":
-        raise KeyboardInterrupt("Execution aborted by user")
+        return "quit"
 
-    return normalized == "y"
+    if normalized == "y":
+        return "apply"
+
+    return "skip"
 
 
 async def get_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
@@ -200,10 +204,17 @@ async def on_ready() -> None:
 
     results: list[SyncResult] = []
 
+    execution_aborted = False
+
     for action in actions:
         if RUN_MODE == "step_through":
-            should_apply = await prompt_to_continue(action)
-            if not should_apply:
+            decision = await prompt_to_continue(action)
+
+            if decision == "quit":
+                print("Execution aborted by operator.")
+                break
+
+            if decision == "skip":
                 skipped_result = SyncResult(
                     action=action,
                     verdict="skipped",
