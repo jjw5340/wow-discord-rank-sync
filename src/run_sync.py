@@ -70,12 +70,12 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_preview_lines(
+def build_header_lines(
     guild: discord.Guild,
     members: list[discord.Member],
     actions: list[SyncAction],
 ) -> list[str]:
-    """Build the preview section for planned sync actions."""
+    """Build the shared header section for sync output."""
     lines: list[str] = []
     lines.append(f"wow-discord-rank-sync")
     lines.append(f"Run mode: {RUN_MODE}")
@@ -84,9 +84,15 @@ def build_preview_lines(
     lines.append(f"Discord Server: {guild.name} ({guild.id})")
     lines.append(f"Fetched member count: {len(members)}")
     lines.append(f"Planned action count: {len(actions)}")
-    lines.append(f"")
-    lines.append(f"Planned Actions")
-    lines.append(f"---------------")
+    return lines
+
+
+def build_planned_action_lines(actions: list[SyncAction]) -> list[str]:
+    """Build the planned-actions section for preview mode."""
+    lines: list[str] = []
+    lines.append("")
+    lines.append("Planned Actions")
+    lines.append("---------------")
 
     if actions:
         for action in actions:
@@ -97,12 +103,12 @@ def build_preview_lines(
     return lines
 
 
-def build_result_lines(results: list[SyncResult]) -> list[str]:
-    """Build the result section for executed sync actions."""
+def build_executed_action_lines(results: list[SyncResult]) -> list[str]:
+    """Build the executed-actions section for apply modes."""
     lines: list[str] = []
     lines.append("")
-    lines.append("Execution Results")
-    lines.append("-----------------")
+    lines.append("Executed Actions")
+    lines.append("----------------")
 
     if results:
         for result in results:
@@ -186,7 +192,9 @@ async def on_ready() -> None:
     members = [member async for member in guild.fetch_members(limit=None)]
     actions = plan_guild_sync_actions(members, ROLE_POLICY)
 
-    preview_lines = build_preview_lines(guild, members, actions)
+    header_lines = build_header_lines(guild, members, actions)
+    planned_action_lines = build_planned_action_lines(actions)
+    preview_lines = header_lines + planned_action_lines
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text("\n".join(preview_lines) + "\n", encoding="utf-8")
@@ -194,17 +202,16 @@ async def on_ready() -> None:
     print(f"Wrote preview output to: {OUTPUT_PATH}")
 
     log_channel = await get_log_channel(guild)
-    if log_channel is not None:
-        await send_log_message(log_channel, preview_lines)
 
     if RUN_MODE == "preview":
+        if log_channel is not None:
+            await send_log_message(log_channel, preview_lines)
+
         print("Preview complete; no role changes were applied.")
         await client.close()
         return
 
     results: list[SyncResult] = []
-
-    execution_aborted = False
 
     for action in actions:
         if RUN_MODE == "step_through":
@@ -228,15 +235,15 @@ async def on_ready() -> None:
         results.append(result)
         print(format_result(result))
 
-    result_lines = build_result_lines(results)
+    executed_action_lines = build_executed_action_lines(results)
+    final_lines = header_lines + executed_action_lines
 
-    with OUTPUT_PATH.open("a", encoding="utf-8") as f:
-        f.write("\n".join(result_lines) + "\n")
+    OUTPUT_PATH.write_text("\n".join(final_lines) + "\n", encoding="utf-8")
 
     if log_channel is not None:
-        await send_log_message(log_channel, result_lines)
+        await send_log_message(log_channel, final_lines)
 
-    print(f"Execution complete; appended results to: {OUTPUT_PATH}")
+    print(f"Execution complete; wrote results to: {OUTPUT_PATH}")
 
     await client.close()
 
