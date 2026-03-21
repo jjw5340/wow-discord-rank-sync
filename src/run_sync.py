@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Literal
 
 import discord
+from discord.errors import DiscordException
 from dotenv import load_dotenv
 
 from src.bot import DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, client
@@ -183,69 +184,84 @@ async def get_log_channel(guild: discord.Guild) -> discord.TextChannel | None:
 
 @client.event
 async def on_ready() -> None:
-    print(f"Bot connected as {client.user}")
+    try:
+        print(f"Bot connected as {client.user}")
 
-    guild = client.get_guild(DISCORD_GUILD_ID)
-    if guild is None:
-        raise RuntimeError(f"Guild {DISCORD_GUILD_ID} not found")
+        guild = client.get_guild(DISCORD_GUILD_ID)
+        if guild is None:
+            raise RuntimeError(f"Guild {DISCORD_GUILD_ID} not found")
 
-    members = [member async for member in guild.fetch_members(limit=None)]
-    actions = plan_guild_sync_actions(members, ROLE_POLICY)
+        members = [member async for member in guild.fetch_members(limit=None)]
+        actions = plan_guild_sync_actions(members, ROLE_POLICY)
 
-    header_lines = build_header_lines(guild, members, actions)
-    planned_action_lines = build_planned_action_lines(actions)
-    preview_lines = header_lines + planned_action_lines
+        header_lines = build_header_lines(guild, members, actions)
+        planned_action_lines = build_planned_action_lines(actions)
+        preview_lines = header_lines + planned_action_lines
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text("\n".join(preview_lines) + "\n", encoding="utf-8")
+        OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        OUTPUT_PATH.write_text("\n".join(preview_lines) + "\n", encoding="utf-8")
 
-    print(f"Wrote preview output to: {OUTPUT_PATH}")
+        print(f"Wrote preview output to: {OUTPUT_PATH}")
 
-    log_channel = await get_log_channel(guild)
+        log_channel = await get_log_channel(guild)
 
-    if RUN_MODE == "preview":
-        if log_channel is not None:
-            await send_log_message(log_channel, preview_lines)
+        if RUN_MODE == "preview":
+            if log_channel is not None:
+                await send_log_message(log_channel, preview_lines)
 
-        print("Preview complete; no role changes were applied.")
-        await client.close()
-        return
+            print("Preview complete; no role changes were applied.")
+            return
 
-    results: list[SyncResult] = []
+        results: list[SyncResult] = []
 
-    for action in actions:
-        if RUN_MODE == "step_through":
-            decision = await prompt_to_continue(action)
+        for action in actions:
+            if RUN_MODE == "step_through":
+                decision = await prompt_to_continue(action)
 
-            if decision == "quit":
-                print("Execution aborted by operator.")
-                break
+                if decision == "quit":
+                    print("Execution aborted by operator.")
+                    break
 
-            if decision == "skip":
-                skipped_result = SyncResult(
+                if decision == "skip":
+                    skipped_result = SyncResult(
+                        action=action,
+                        verdict="skipped",
+                        detail="skipped by operator",
+                    )
+                    results.append(skipped_result)
+                    print(format_result(skipped_result))
+                    continue
+
+            try:
+                result = await apply_sync_action(guild, action)
+            except DiscordException as exc:
+                result = SyncResult(
                     action=action,
                     verdict="skipped",
-                    detail="skipped by operator",
+                    detail=f"discord error: {exc}",
                 )
-                results.append(skipped_result)
-                print(format_result(skipped_result))
-                continue
+            except Exception as exc:
+                result = SyncResult(
+                    action=action,
+                    verdict="skipped",
+                    detail=f"unexpected error: {exc}",
+                )
 
-        result = await apply_sync_action(guild, action)
-        results.append(result)
-        print(format_result(result))
+            results.append(result)
+            print(format_result(result))
 
-    executed_action_lines = build_executed_action_lines(results)
-    final_lines = header_lines + executed_action_lines
+        executed_action_lines = build_executed_action_lines(results)
+        final_lines = header_lines + executed_action_lines
 
-    OUTPUT_PATH.write_text("\n".join(final_lines) + "\n", encoding="utf-8")
+        OUTPUT_PATH.write_text("\n".join(final_lines) + "\n", encoding="utf-8")
 
-    if log_channel is not None:
-        await send_log_message(log_channel, final_lines)
+        if log_channel is not None:
+            await send_log_message(log_channel, final_lines)
 
-    print(f"Execution complete; wrote results to: {OUTPUT_PATH}")
+        print(f"Execution complete; wrote results to: {OUTPUT_PATH}")
 
-    await client.close()
+    finally:
+        await client.close()
 
 
 if __name__ == "__main__":
